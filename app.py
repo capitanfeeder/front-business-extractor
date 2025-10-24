@@ -5,6 +5,9 @@ Sistema de análisis de código legacy mainframe con interfaz web profesional.
 
 import streamlit as st
 import requests
+import json
+import markdown
+import base64
 from io import BytesIO
 
 # Page configuration
@@ -163,15 +166,203 @@ def upload_files(file_type, files):
 
 
 def run_analysis(process_name):
-    """Run analysis and download report."""
-    payload = {"process_name": process_name}
+    """Run analysis and get JSON response with markdown content."""
+    payload = {"process_name": process_name} if process_name else {}
+    
     response = requests.post(
-        f"{API_BASE_URL}/analysis/run?download=true",
-        json=payload,
-        stream=True
+        f"{API_BASE_URL}/analysis/run",
+        json=payload
     )
     response.raise_for_status()
-    return response.content
+    return response.json()
+
+
+def markdown_to_pdf_html(markdown_content, process_name):
+    """Convert markdown to HTML with ICBC styling for PDF generation."""
+    
+    # Convert markdown to HTML
+    html_content = markdown.markdown(
+        markdown_content,
+        extensions=['tables', 'fenced_code', 'codehilite']
+    )
+    
+    # ICBC CSS styling
+    css_styles = """
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 2.5cm 2cm 3cm 2cm;
+            }
+        }
+        
+        body {
+            font-family: 'Calibri', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #222;
+            margin: 0;
+            padding: 20px;
+            background: white;
+        }
+        
+        .document-header {
+            text-align: center;
+            margin-bottom: 2cm;
+            padding-bottom: 1cm;
+            border-bottom: 3px solid #C0161C;
+        }
+        
+        .document-title {
+            font-family: 'Arial', sans-serif;
+            font-size: 22pt;
+            font-weight: bold;
+            color: #C0161C;
+            text-transform: uppercase;
+            margin: 0 0 0.5cm 0;
+            letter-spacing: 1px;
+        }
+        
+        .document-subtitle {
+            font-family: 'Calibri', sans-serif;
+            font-size: 14pt;
+            color: #444;
+            margin-bottom: 0.3cm;
+        }
+        
+        h1 {
+            font-family: 'Arial', sans-serif;
+            font-size: 16pt;
+            font-weight: bold;
+            color: #C0161C;
+            text-transform: uppercase;
+            margin: 1.5cm 0 0.8cm 0;
+            padding-bottom: 0.3cm;
+            border-bottom: 2px solid #C0161C;
+            page-break-after: avoid;
+        }
+        
+        h2 {
+            font-family: 'Arial', sans-serif;
+            font-size: 14pt;
+            font-weight: bold;
+            color: #C0161C;
+            text-transform: uppercase;
+            margin: 1.2cm 0 0.6cm 0;
+            page-break-after: avoid;
+        }
+        
+        h3 {
+            font-family: 'Calibri', sans-serif;
+            font-size: 12pt;
+            font-weight: bold;
+            color: #444;
+            margin: 1cm 0 0.5cm 0;
+            page-break-after: avoid;
+        }
+        
+        p {
+            margin: 0 0 0.6cm 0;
+            text-align: justify;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #C0161C;
+            margin: 0.8cm 0;
+            font-size: 9pt;
+            page-break-inside: avoid;
+        }
+        
+        table th {
+            background-color: #C0161C;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 0.4cm;
+            border: 1px solid #A0141A;
+            text-align: center;
+        }
+        
+        table td {
+            padding: 0.3cm 0.4cm;
+            border: 1px solid #ddd;
+            vertical-align: top;
+            line-height: 1.3;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-left: 4px solid #C0161C;
+            padding: 0.8cm;
+            margin: 0.8cm 0;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            line-height: 1.3;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+        
+        code {
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            background-color: #f1f1f1;
+            padding: 0.1cm 0.2cm;
+            border-radius: 2px;
+        }
+        
+        blockquote {
+            border-left: 4px solid #C0161C;
+            margin: 0.8cm 0;
+            padding: 0.5cm 0.8cm;
+            background-color: #fafafa;
+            font-style: italic;
+            page-break-inside: avoid;
+        }
+        
+        ul, ol {
+            margin: 0.5cm 0;
+            padding-left: 1.2cm;
+        }
+        
+        li {
+            margin-bottom: 0.3cm;
+            line-height: 1.4;
+        }
+    </style>
+    """
+    
+    # Complete HTML document
+    html_document = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{process_name}</title>
+        {css_styles}
+    </head>
+    <body>
+        <div class="document-header">
+            <h1 class="document-title">{process_name}</h1>
+            <div class="document-subtitle">Business Logic Extractor - Análisis de Código Legacy</div>
+        </div>
+        
+        <div class="document-content">
+            {html_content}
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html_document
 
 
 def main():
@@ -190,6 +381,8 @@ def main():
         st.session_state.report_data = None
     if 'report_filename' not in st.session_state:
         st.session_state.report_filename = None
+    if 'report_format' not in st.session_state:
+        st.session_state.report_format = None
 
     # Sidebar with information
     with st.sidebar:
@@ -284,13 +477,22 @@ def main():
     # Analysis section
     st.markdown('<h2 class="section-header">🔍 Configuración y Análisis</h2>', unsafe_allow_html=True)
     
-    # Process name input
-    col_name, col_space = st.columns([3, 1])
+    # Process name and format selection
+    col_name, col_format = st.columns([2, 1])
     with col_name:
         process_name = st.text_input(
             "Nombre del Proceso (Opcional)",
             placeholder="Ej: Mantenimiento_VSAM, Proceso_Batch_Cuentas, etc.",
             help="Si no se especifica, se usará 'Business_Requirements' por defecto"
+        )
+    
+    with col_format:
+        st.markdown("#### 📄 Formato de Salida")
+        output_format = st.selectbox(
+            "Seleccionar formato",
+            options=["markdown", "pdf"],
+            format_func=lambda x: "📝 Markdown (.md)" if x == "markdown" else "📄 PDF Profesional (.pdf)",
+            help="PDF incluye diagramas renderizados, tablas formateadas y diseño profesional ICBC"
         )
 
     # Analysis button
@@ -305,8 +507,11 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
+    format_icon = "📄" if output_format == "pdf" else "📝"
+    format_text = "PDF PROFESIONAL" if output_format == "pdf" else "MARKDOWN"
+    
     analyze_button = st.button(
-        "🚀 ANALIZAR Y DESCARGAR REPORTE",
+        f"🚀 ANALIZAR Y DESCARGAR {format_text}",
         disabled=not can_analyze,
         use_container_width=True
     )
@@ -343,14 +548,33 @@ def main():
             progress_bar.progress(60)
             
             final_process_name = process_name.strip() if process_name.strip() else "Business_Requirements"
-            report_content = run_analysis(final_process_name)
+            analysis_result = run_analysis(final_process_name)
             
-            # Step 5: Prepare download
-            status_text.markdown("**Fase 5/5:** Generando reporte para descarga...")
-            progress_bar.progress(90)
+            # Step 5: Process the report based on format
+            status_text.markdown("**Fase 5/5:** Procesando reporte...")
+            progress_bar.progress(80)
             
-            st.session_state.report_data = report_content
-            st.session_state.report_filename = f"{final_process_name}.md"
+            # Extract content from the JSON response
+            markdown_content = analysis_result.get('markdown_report', '')
+            result_process_name = analysis_result.get('process_name', final_process_name)
+            
+            if output_format == "pdf":
+                # Generate PDF HTML for download
+                html_content = markdown_to_pdf_html(markdown_content, result_process_name)
+                
+                # Store HTML for PDF generation via browser
+                st.session_state.report_data = html_content
+                st.session_state.report_filename = f"{result_process_name}.html"
+                st.session_state.report_format = "pdf"
+                st.session_state.markdown_content = markdown_content
+                st.session_state.process_name = result_process_name
+            else:
+                # Store markdown content
+                st.session_state.report_data = markdown_content
+                st.session_state.report_filename = f"{result_process_name}.md"
+                st.session_state.report_format = "markdown"
+                st.session_state.process_name = result_process_name
+                
             st.session_state.analysis_complete = True
             
             progress_bar.progress(100)
@@ -358,10 +582,11 @@ def main():
             progress_bar.empty()
             
             # Success message
-            st.markdown("""
+            format_desc = "PDF profesional con diagramas renderizados y formato ICBC" if output_format == "pdf" else "archivo Markdown"
+            st.markdown(f"""
             <div class="success-box">
                 ✅ <strong>¡Análisis completado exitosamente!</strong><br>
-                El reporte está listo para descargar. Los archivos temporales han sido limpiados automáticamente.
+                El {format_desc} está listo para descargar. Los archivos temporales han sido limpiados automáticamente.
             </div>
             """, unsafe_allow_html=True)
             
@@ -374,7 +599,7 @@ def main():
                 {str(e)}
             </div>
             """, unsafe_allow_html=True)
-            st.error("Por favor, verifique que el servidor backend esté ejecutándose en http://localhost:8000")
+            st.error("Por favor, verifique que el servidor backend esté ejecutándose en https://business-logic-extractor.onrender.com")
 
     # Download section
     if st.session_state.analysis_complete and st.session_state.report_data:
@@ -384,22 +609,53 @@ def main():
         col_download, col_info = st.columns([2, 2])
         
         with col_download:
-            st.download_button(
-                label="📄 DESCARGAR REPORTE MARKDOWN",
-                data=st.session_state.report_data,
-                file_name=st.session_state.report_filename,
-                mime="text/markdown",
-                use_container_width=True
-            )
+            if st.session_state.get('report_format') == 'pdf':
+                # For PDF, provide HTML for browser-based PDF generation
+                st.download_button(
+                    label="📄 DESCARGAR HTML (Abrir e Imprimir como PDF)",
+                    data=st.session_state.report_data,
+                    file_name=st.session_state.report_filename,
+                    mime="text/html",
+                    use_container_width=True
+                )
+                
+                # Also provide markdown option
+                if 'markdown_content' in st.session_state:
+                    st.download_button(
+                        label="📝 DESCARGAR MARKDOWN (OPCIONAL)",
+                        data=st.session_state.markdown_content,
+                        file_name=f"{st.session_state.get('process_name', 'Business_Requirements')}.md",
+                        mime="text/markdown",
+                        use_container_width=True
+                    )
+            else:
+                st.download_button(
+                    label="📝 DESCARGAR REPORTE MARKDOWN",
+                    data=st.session_state.report_data,
+                    file_name=st.session_state.report_filename,
+                    mime="text/markdown",
+                    use_container_width=True
+                )
         
         with col_info:
-            st.info(f"**Archivo:** {st.session_state.report_filename}\n\n**Formato:** Markdown (.md)")
+            if st.session_state.get('report_format') == 'pdf':
+                st.info("""**Formato:** HTML con diseño ICBC
+                
+**Instrucciones para PDF:**
+1. Descarga el archivo HTML
+2. Ábrelo en tu navegador
+3. Presiona Ctrl+P (Imprimir)
+4. Selecciona "Guardar como PDF"
+5. ¡Listo! Tendrás tu PDF profesional""")
+            else:
+                st.info(f"**Archivo:** {st.session_state.report_filename}\n\n**Formato:** Markdown (.md)")
         
         # Reset button
         if st.button("🔄 Realizar Nuevo Análisis", use_container_width=True):
             st.session_state.analysis_complete = False
             st.session_state.report_data = None
             st.session_state.report_filename = None
+            st.session_state.report_format = None
             st.rerun()
 
     # Footer
