@@ -555,23 +555,30 @@ def main():
             progress_bar.progress(80)
             
             # Extract content from the JSON response
-            markdown_content = analysis_result.get('markdown_report', '')
+            markdown_content_es = analysis_result.get('markdown_report', '')
+            markdown_content_en = analysis_result.get('markdown_report_en', '')
             result_process_name = analysis_result.get('process_name', final_process_name)
             
             if output_format == "pdf":
-                # Generate PDF HTML for download
-                html_content = markdown_to_pdf_html(markdown_content, result_process_name)
+                # Generate PDF HTML for both languages
+                html_content_es = markdown_to_pdf_html(markdown_content_es, result_process_name)
+                html_content_en = markdown_to_pdf_html(markdown_content_en, result_process_name)
                 
                 # Store HTML for PDF generation via browser
-                st.session_state.report_data = html_content
-                st.session_state.report_filename = f"{result_process_name}.html"
+                st.session_state.report_data_es = html_content_es
+                st.session_state.report_data_en = html_content_en
+                st.session_state.report_filename_es = f"{result_process_name}_ES.html"
+                st.session_state.report_filename_en = f"{result_process_name}_EN.html"
                 st.session_state.report_format = "pdf"
-                st.session_state.markdown_content = markdown_content
+                st.session_state.markdown_content_es = markdown_content_es
+                st.session_state.markdown_content_en = markdown_content_en
                 st.session_state.process_name = result_process_name
             else:
-                # Store markdown content
-                st.session_state.report_data = markdown_content
-                st.session_state.report_filename = f"{result_process_name}.md"
+                # Store markdown content for both languages
+                st.session_state.report_data_es = markdown_content_es
+                st.session_state.report_data_en = markdown_content_en
+                st.session_state.report_filename_es = f"{result_process_name}_ES.md"
+                st.session_state.report_filename_en = f"{result_process_name}_EN.md"
                 st.session_state.report_format = "markdown"
                 st.session_state.process_name = result_process_name
                 
@@ -586,7 +593,7 @@ def main():
             st.markdown(f"""
             <div class="success-box">
                 ✅ <strong>¡Análisis completado exitosamente!</strong><br>
-                El {format_desc} está listo para descargar. Los archivos temporales han sido limpiados automáticamente.
+                El {format_desc} está listo para descargar en ESPAÑOL e INGLÉS. Los archivos temporales han sido limpiados automáticamente.
             </div>
             """, unsafe_allow_html=True)
             
@@ -602,60 +609,120 @@ def main():
             st.error("Por favor, verifique que el servidor backend esté ejecutándose en https://business-logic-extractor.onrender.com")
 
     # Download section
-    if st.session_state.analysis_complete and st.session_state.report_data:
+    if st.session_state.analysis_complete and st.session_state.get('report_data_es'):
         st.markdown("---")
         st.markdown('<h2 class="section-header">📥 Descargar Reporte</h2>', unsafe_allow_html=True)
         
-        col_download, col_info = st.columns([2, 2])
+        # Info box about bilingual reports
+        st.markdown("""
+        <div class="info-box">
+            <div class="info-box-title">🌐 Reportes Bilingües Disponibles</div>
+            <p>El sistema ha generado automáticamente el reporte completo en <strong>español</strong> e <strong>inglés</strong>. 
+            Ambas versiones contienen exactamente el mismo contenido y estructura, solo difieren en el idioma.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        with col_download:
+        # Create two columns for Spanish and English downloads
+        col_spanish, col_english = st.columns(2)
+        
+        with col_spanish:
+            st.markdown("#### 🇪🇸 Versión en Español")
             if st.session_state.get('report_format') == 'pdf':
                 # For PDF, provide HTML for browser-based PDF generation
                 st.download_button(
-                    label="📄 DESCARGAR HTML (Abrir e Imprimir como PDF)",
-                    data=st.session_state.report_data,
-                    file_name=st.session_state.report_filename,
+                    label="📄 DESCARGAR HTML ESPAÑOL",
+                    data=st.session_state.report_data_es,
+                    file_name=st.session_state.report_filename_es,
                     mime="text/html",
-                    use_container_width=True
+                    use_container_width=True,
+                    key="download_html_es"
                 )
                 
                 # Also provide markdown option
-                if 'markdown_content' in st.session_state:
+                if 'markdown_content_es' in st.session_state:
                     st.download_button(
-                        label="📝 DESCARGAR MARKDOWN (OPCIONAL)",
-                        data=st.session_state.markdown_content,
-                        file_name=f"{st.session_state.get('process_name', 'Business_Requirements')}.md",
+                        label="📝 MARKDOWN ESPAÑOL",
+                        data=st.session_state.markdown_content_es,
+                        file_name=f"{st.session_state.get('process_name', 'Business_Requirements')}_ES.md",
                         mime="text/markdown",
-                        use_container_width=True
+                        use_container_width=True,
+                        key="download_md_es"
                     )
             else:
                 st.download_button(
-                    label="📝 DESCARGAR REPORTE MARKDOWN",
-                    data=st.session_state.report_data,
-                    file_name=st.session_state.report_filename,
+                    label="📝 DESCARGAR MARKDOWN ESPAÑOL",
+                    data=st.session_state.report_data_es,
+                    file_name=st.session_state.report_filename_es,
                     mime="text/markdown",
-                    use_container_width=True
+                    use_container_width=True,
+                    key="download_md_only_es"
                 )
         
-        with col_info:
+        with col_english:
+            st.markdown("#### 🇬🇧 English Version")
             if st.session_state.get('report_format') == 'pdf':
-                st.info("""**Formato:** HTML con diseño ICBC
+                # For PDF, provide HTML for browser-based PDF generation
+                st.download_button(
+                    label="📄 DOWNLOAD ENGLISH HTML",
+                    data=st.session_state.report_data_en,
+                    file_name=st.session_state.report_filename_en,
+                    mime="text/html",
+                    use_container_width=True,
+                    key="download_html_en"
+                )
                 
-**Instrucciones para PDF:**
-1. Descarga el archivo HTML
-2. Ábrelo en tu navegador
-3. Presiona Ctrl+P (Imprimir)
-4. Selecciona "Guardar como PDF"
-5. ¡Listo! Tendrás tu PDF profesional""")
+                # Also provide markdown option
+                if 'markdown_content_en' in st.session_state:
+                    st.download_button(
+                        label="📝 ENGLISH MARKDOWN",
+                        data=st.session_state.markdown_content_en,
+                        file_name=f"{st.session_state.get('process_name', 'Business_Requirements')}_EN.md",
+                        mime="text/markdown",
+                        use_container_width=True,
+                        key="download_md_en"
+                    )
             else:
-                st.info(f"**Archivo:** {st.session_state.report_filename}\n\n**Formato:** Markdown (.md)")
+                st.download_button(
+                    label="📝 DOWNLOAD ENGLISH MARKDOWN",
+                    data=st.session_state.report_data_en,
+                    file_name=st.session_state.report_filename_en,
+                    mime="text/markdown",
+                    use_container_width=True,
+                    key="download_md_only_en"
+                )
+        
+        # Single info box below both columns
+        st.markdown("---")
+        if st.session_state.get('report_format') == 'pdf':
+            st.info("""**📄 Instrucciones para generar PDF:**
+            
+1. Descarga el archivo HTML en el idioma deseado (Español o English)
+2. Ábrelo en tu navegador web (Chrome, Edge, Firefox)
+3. Presiona **Ctrl+P** (o Cmd+P en Mac) para abrir el diálogo de impresión
+4. En "Destino" o "Destination", selecciona **"Guardar como PDF"**
+5. Ajusta los márgenes si es necesario y haz clic en Guardar
+6. ¡Listo! Tendrás tu reporte en formato PDF profesional con el diseño ICBC
+
+**Nota:** También puedes descargar la versión Markdown si prefieres editar o procesar el contenido.""")
+        else:
+            st.info("""**📝 Formato Markdown:**
+            
+Los reportes están disponibles en formato Markdown (.md) en ambos idiomas.
+Puedes abrirlos con cualquier editor de texto o visualizador de Markdown.
+
+**Uso recomendado:** Importar en herramientas de documentación, wikis, o editores como VSCode, Obsidian, Notion.""")
         
         # Reset button
         if st.button("🔄 Realizar Nuevo Análisis", use_container_width=True):
             st.session_state.analysis_complete = False
-            st.session_state.report_data = None
-            st.session_state.report_filename = None
+            st.session_state.report_data_es = None
+            st.session_state.report_data_en = None
+            st.session_state.report_filename_es = None
+            st.session_state.report_filename_en = None
             st.session_state.report_format = None
+            st.session_state.markdown_content_es = None
+            st.session_state.markdown_content_en = None
+            st.session_state.process_name = None
             st.rerun()
 
     # Footer
