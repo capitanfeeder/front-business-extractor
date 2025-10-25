@@ -167,7 +167,7 @@ def upload_files(file_type, files):
 
 def run_analysis(process_name):
     """Run analysis and get JSON response with markdown content."""
-    payload = {"process_name": process_name} if process_name else {}
+    payload = {"process_name": process_name} if process_name else None
     
     response = requests.post(
         f"{API_BASE_URL}/analysis/run",
@@ -491,7 +491,7 @@ def main():
         output_format = st.selectbox(
             "Seleccionar formato",
             options=["markdown", "pdf"],
-            format_func=lambda x: "📝 Markdown (.md)" if x == "markdown" else "📄 PDF Profesional (.pdf)",
+            format_func=lambda x: "📝 Markdown (.md)" if x == "markdown" else "📄 PDF (.pdf)",
             help="PDF incluye diagramas renderizados, tablas formateadas y diseño profesional ICBC"
         )
 
